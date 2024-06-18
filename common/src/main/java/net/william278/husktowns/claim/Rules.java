@@ -26,7 +26,7 @@ import net.william278.cloplib.operation.OperationType;
 import net.william278.husktowns.config.Flags;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -48,7 +48,7 @@ public class Rules {
 
     @NotNull
     private static Map<Flag, Boolean> getMapped(@NotNull Map<String, Boolean> flags, @NotNull Flags flagConfig) {
-        Map<Flag, Boolean> mappedFlags = new EnumMap<>(Flag.class);
+        Map<Flag, Boolean> mappedFlags = new HashMap<>();
         for (Map.Entry<String, Boolean> entry : flags.entrySet()) {
             Optional<Flag> flag = flagConfig.getFlag(entry.getKey());
             flag.ifPresent(f -> mappedFlags.put(f, entry.getValue()));
@@ -58,7 +58,7 @@ public class Rules {
 
     @NotNull
     public static Rules of(@NotNull Map<Flag, Boolean> rules) {
-        Map<String, Boolean> flags = new EnumMap<>(String.class);
+        Map<String, Boolean> flags = new HashMap<>();
         for (Map.Entry<Flag, Boolean> entry : rules.entrySet()) {
             flags.put(entry.getKey().getName(), entry.getValue());
         }
