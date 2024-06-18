@@ -26,10 +26,9 @@ import net.william278.cloplib.operation.OperationType;
 import net.william278.husktowns.config.Flags;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.EnumMap;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 /**
  * Claim rules, defining what players can do in a claim
@@ -41,7 +40,7 @@ public class Rules {
     private Map<String, Boolean> flags;
 
     @Expose(deserialize = false, serialize = false)
-    private Map<Flag, Boolean> calculatedFlags = null;
+    private Map<Flag, Boolean> calculatedFlags;
 
     private Rules(@NotNull Map<String, Boolean> flags) {
         this.flags = flags;
@@ -49,40 +48,23 @@ public class Rules {
 
     @NotNull
     private static Map<Flag, Boolean> getMapped(@NotNull Map<String, Boolean> flags, @NotNull Flags flagConfig) {
-        return flags.entrySet().stream()
-            .filter(f -> flagConfig.getFlag(f.getKey()).isPresent())
-            .collect(Collectors.toMap(
-                f -> flagConfig.getFlag(f.getKey()).orElseThrow(),
-                Map.Entry::getValue,
-                (a, b) -> b,
-                HashMap::new
-            ));
+        Map<Flag, Boolean> mappedFlags = new EnumMap<>(Flag.class);
+        for (Map.Entry<String, Boolean> entry : flags.entrySet()) {
+            Optional<Flag> flag = flagConfig.getFlag(entry.getKey());
+            flag.ifPresent(f -> mappedFlags.put(f, entry.getValue()));
+        }
+        return mappedFlags;
     }
 
-    /**
-     * Create a new Rules instance from a {@link Flag}-value map
-     *
-     * @param rules the rules map to create from
-     * @return the new Rules instance
-     */
     @NotNull
     public static Rules of(@NotNull Map<Flag, Boolean> rules) {
-        return new Rules(rules.entrySet().stream()
-            .collect(Collectors.toMap(
-                e -> e.getKey().getName(),
-                Map.Entry::getValue,
-                (a, b) -> b,
-                LinkedHashMap::new
-            )));
+        Map<String, Boolean> flags = new EnumMap<>(String.class);
+        for (Map.Entry<Flag, Boolean> entry : rules.entrySet()) {
+            flags.put(entry.getKey().getName(), entry.getValue());
+        }
+        return new Rules(flags);
     }
 
-    /**
-     * Create a new Rules instance from a map of flag names to their respective values
-     * *
-     *
-     * @param flags the map of flag IDs to create from
-     * @return the new Rules instance
-     */
     @NotNull
     public static Rules from(@NotNull Map<String, Boolean> flags) {
         return new Rules(flags);
@@ -90,42 +72,30 @@ public class Rules {
 
     @NotNull
     public Map<Flag, Boolean> getCalculatedFlags(@NotNull Flags flagConfig) {
-        return calculatedFlags == null ? calculatedFlags = getMapped(flags, flagConfig) : calculatedFlags;
+        if (calculatedFlags == null) {
+            calculatedFlags = getMapped(flags, flagConfig);
+        }
+        return calculatedFlags;
     }
 
     public boolean hasFlagSet(@NotNull Flag flag) {
         return flags.containsKey(flag.getName());
     }
 
-    /**
-     * Set the value of a flag
-     *
-     * @param flag  the flag to set
-     * @param value the value to set the flag to
-     */
     public void setFlag(@NotNull Flag flag, boolean value) {
-        if (flags.containsKey(flag.getName())) {
-            flags.replace(flag.getName(), value);
-        } else {
-            flags.put(flag.getName(), value);
-        }
+        flags.put(flag.getName(), value);
         if (calculatedFlags != null) {
             calculatedFlags.put(flag, value);
         }
     }
 
-    /**
-     * Whether, for the given operation, the flag rules set indicate it should be cancelled
-     *
-     * @param type the operation type that is being performed in a region governed by these rules
-     * @return Whether the operation should be canceled:
-     * <p>
-     * {@code true} if no flags have been set to {@code true} that permit the operation; {@code false} otherwise
-     */
     public boolean cancelOperation(@NotNull OperationType type, @NotNull Flags flagConfig) {
-        return getCalculatedFlags(flagConfig).entrySet().stream()
-            .filter(Map.Entry::getValue)
-            .noneMatch(entry -> entry.getKey().isOperationAllowed(type));
+        for (Map.Entry<Flag, Boolean> entry : getCalculatedFlags(flagConfig).entrySet()) {
+            if (entry.getValue() && entry.getKey().isOperationAllowed(type)) {
+                return false;
+            }
+        }
+        return true;
     }
 
 }
