@@ -43,7 +43,7 @@ public class Rules {
     private Map<Flag, Boolean> calculatedFlags;
 
     private Rules(@NotNull Map<String, Boolean> flags) {
-        this.flags = flags;
+        this.flags = new HashMap<>(flags); // Ensure mutable copy
     }
 
     @NotNull
@@ -67,7 +67,7 @@ public class Rules {
 
     @NotNull
     public static Rules from(@NotNull Map<String, Boolean> flags) {
-        return new Rules(flags);
+        return new Rules(new HashMap<>(flags)); // Ensure mutable copy
     }
 
     @NotNull
@@ -83,7 +83,7 @@ public class Rules {
     }
 
     public void setFlag(@NotNull Flag flag, boolean value) {
-        flags.put(flag.getName(), value);
+        flags.put(flag.getName(), value); // This will work since flags is now mutable
         if (calculatedFlags != null) {
             calculatedFlags.put(flag, value);
         }
@@ -97,5 +97,4 @@ public class Rules {
         }
         return true;
     }
-
 }
